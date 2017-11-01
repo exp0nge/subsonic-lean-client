@@ -2,6 +2,7 @@ import hashlib
 import random
 import typing
 import logging
+from urllib.parse import urlencode
 
 import tortilla
 
@@ -33,8 +34,11 @@ class SubsonicClient(object):
     def __metadata(self) -> dict:
         return {'v': SubsonicClient.API_VERSION, 'c': self.app_name, 'f': 'json'}
 
+    def _merge_params(self, params: dict = None) -> dict:
+        return {**self._auth, **self.__metadata, **(params if params else {})}
+
     def _request_get(self, route, params: dict = None) -> dict:
-        full_params = {**self._auth, **self.__metadata, **(params if params else {})}
+        full_params = self._merge_params(params)
         result = route.get(params=full_params)['subsonic-response']
         if result['status'] == 'failed':
             raise ValueError(result['error']['message'])
@@ -145,6 +149,11 @@ class SubsonicClient(object):
                                          child['artistId'],
                                          child['type']) for child in items['song']])
 
+    def stream_url(self, _id: str) -> str:
+        part = self.api.stream()
+        qs = urlencode(self._merge_params(params={'id': _id}))
+        return '{0}?{1}'.format(part._url, qs)
+
     def get_all_songs(self) -> typing.List[models.Song]:
         all_songs = []
         total_songs = 0
@@ -176,6 +185,8 @@ if __name__ == '__main__':
     print(album_songs)
     music_directory = api.get_music_directory('6')
     print(music_directory)
-    songs = api.get_all_songs()
-    print(songs)
-    print('len of songs', len(songs))
+    # songs = api.get_all_songs()
+    # print(songs)
+    # print('len of songs', len(songs))
+    stream_url = api.stream_url('84')
+    print(stream_url)
