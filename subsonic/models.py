@@ -127,3 +127,18 @@ class ScanStatus(object):
 
     def __repr__(self):
         return 'ScanStatus<scanning[{0}], count[{1}]>'.format(self.scanning, self.count)
+
+
+class Share(object):
+    def __init__(self, id_: str, url: str, username: str, created: str, expires: str, visit_count: int,
+                 entry: typing.List[Child]):
+        self.id = id_
+        self.url = url
+        self.username = username
+        self.created = created
+        self.expires = expires
+        self.visit_count = visit_count
+        self.entry = entry
+
+    def __repr__(self):
+        return 'Share<id[{0}], url[{1}], expires[{2}]>'.format(self.id, self.url, self.expires)

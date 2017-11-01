@@ -127,7 +127,8 @@ class SubsonicClient(object):
 
     def get_album(self, id_: str) -> models.Album:
         items = self._request_get(self.api.getAlbum(), params={'id': id_})['album']
-        return models.Album(items['song'][0]['parent'], items['name'], items.get('coverArt'), items['songCount'], items['created'],
+        return models.Album(items['song'][0]['parent'], items['name'], items.get('coverArt'), items['songCount'],
+                            items['created'],
                             items['duration'],
                             items.get('artist'),
                             items.get('artistId'),
@@ -154,16 +155,17 @@ class SubsonicClient(object):
         qs = urlencode(self._merge_params(params={'id': id_}))
         return '{0}/{1}/stream?{2}'.format(self.server_location, 'rest', qs)
 
-    def create_share(self, id_: str, description: str = None, expires: int = None) -> str:
+    def create_share(self, id_: str, description: str = None, expires: int = None) -> typing.List[models.Share]:
         params = {'id': id_}
         if description:
             params['description'] = description
         if expires:
             params['expires'] = expires
 
-        shares = self._request_get(self.api.createShare(), params=params)['shares']
-        for share in shares:
-            pass
+        shares = self._request_get(self.api.createShare(), params=params)['shares']['share']
+        return [models.Share(share['id'], share['url'], share['username'], share['created'], share['expires'],
+                             share['visitCount'],
+                             [self._make_child(child) for child in share['entry']]) for share in shares]
 
     def get_all_songs(self) -> typing.List[models.Song]:
         all_songs = []
