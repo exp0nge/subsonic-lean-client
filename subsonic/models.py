@@ -118,3 +118,12 @@ class Directory(object):
 
     def __repr__(self):
         return 'Directory<id[{0}], name[{1}], len(Child)={2}>'.format(self.id, self.name, len(self.child))
+
+
+class ScanStatus(object):
+    def __init__(self, scanning: bool, count: int):
+        self.scanning = scanning
+        self.count = count
+
+    def __repr__(self):
+        return 'ScanStatus<scanning[{0}], count[{1}]>'.format(self.scanning, self.count)

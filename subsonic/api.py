@@ -18,6 +18,7 @@ class SubsonicClient(object):
         self.username = username
         self.password = password
         self.app_name = app_name
+        self.server_location = server_location
         self.api = tortilla.wrap('{0}/rest'.format(server_location))
 
         self.validate()
@@ -126,7 +127,7 @@ class SubsonicClient(object):
 
     def get_album(self, id_: str) -> models.Album:
         items = self._request_get(self.api.getAlbum(), params={'id': id_})['album']
-        return models.Album(items['id'], items['name'], items.get('coverArt'), items['songCount'], items['created'],
+        return models.Album(items['song'][0]['parent'], items['name'], items.get('coverArt'), items['songCount'], items['created'],
                             items['duration'],
                             items.get('artist'),
                             items.get('artistId'),
@@ -149,10 +150,20 @@ class SubsonicClient(object):
                                          child['artistId'],
                                          child['type']) for child in items['song']])
 
-    def stream_url(self, _id: str) -> str:
-        part = self.api.stream()
-        qs = urlencode(self._merge_params(params={'id': _id}))
-        return '{0}?{1}'.format(part._url, qs)
+    def private_stream_url(self, id_: str) -> str:
+        qs = urlencode(self._merge_params(params={'id': id_}))
+        return '{0}/{1}/stream?{2}'.format(self.server_location, 'rest', qs)
+
+    def create_share(self, id_: str, description: str = None, expires: int = None) -> str:
+        params = {'id': id_}
+        if description:
+            params['description'] = description
+        if expires:
+            params['expires'] = expires
+
+        shares = self._request_get(self.api.createShare(), params=params)['shares']
+        for share in shares:
+            pass
 
     def get_all_songs(self) -> typing.List[models.Song]:
         all_songs = []
@@ -165,6 +176,14 @@ class SubsonicClient(object):
                 total_songs += artist_album_songs.song_count
         print(total_songs)
         return all_songs
+
+    def start_scan(self) -> models.ScanStatus:
+        scan_status = self._request_get(self.api.startScan())['scanStatus']
+        return models.ScanStatus(scan_status['scanning'], scan_status['count'])
+
+    def get_scan_status(self) -> models.ScanStatus:
+        scan_status = self._request_get(self.api.getScanStatus())['scanStatus']
+        return models.ScanStatus(scan_status['scanning'], scan_status['count'])
 
 
 if __name__ == '__main__':
@@ -179,14 +198,18 @@ if __name__ == '__main__':
     print(indexes)
     artists = api.get_artists()
     print(artists)
-    artist = api.get_artist(artists[0].artists[0].id)
+    artist = api.get_artist(artists[7].artists[3].id)
     print(artist)
     album_songs = api.get_album(artist.albums[0].id)
-    print(album_songs)
+    print(album_songs, artist.albums[0].song_count)
     music_directory = api.get_music_directory('6')
     print(music_directory)
     # songs = api.get_all_songs()
     # print(songs)
     # print('len of songs', len(songs))
-    stream_url = api.stream_url('84')
+    stream_url = api.private_stream_url('84')
     print(stream_url)
+    # print(api.start_scan())
+    print(api.get_scan_status())
+    share_collection = api.create_share('15')
+    print(share_collection)
