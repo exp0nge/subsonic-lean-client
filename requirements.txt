@@ -1,0 +1,9 @@
+certifi==2017.7.27.1
+chardet==3.0.4
+colorclass==2.2.0
+formats==0.1.1
+idna==2.6
+requests==2.18.4
+six==1.11.0
+tortilla==0.4.2
+urllib3==1.22
