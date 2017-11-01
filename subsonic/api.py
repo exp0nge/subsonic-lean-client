@@ -15,16 +15,18 @@ class Sonic(object):
 
         self.validate()
 
+    @property
     def _auth(self):
         salt = str(random.getrandbits(64))
         hashed_password = hashlib.md5(self.password.encode() + salt.encode()).hexdigest()
         return {'u': self.username, 't': hashed_password, 's': salt}
 
+    @property
     def __metadata(self):
         return {'v': Sonic.API_VERSION, 'c': self.app_name, 'f': 'json'}
 
     def _request_get(self, route, params=None):
-        params = {**self._auth(), **self.__metadata(), **(params if params else {})}
+        params = {**self._auth, **self.__metadata, **(params if params else {})}
         return route.get(params=params)['subsonic-response']
 
     def validate(self):
