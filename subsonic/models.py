@@ -56,6 +56,14 @@ class Child(object):
     def __repr__(self):
         return 'Child<id[{0}], title[{1}]>'.format(self.id, self.title)
 
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        if isinstance(other, Child):
+            return self.id == other.id
+        return False
+
 
 class IndexRoot(object):
     def __init__(self, last_modified: int, ignored_articles: str, index: typing.List[Index], child: typing.List[Child]):

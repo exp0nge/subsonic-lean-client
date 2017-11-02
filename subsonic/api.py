@@ -11,6 +11,19 @@ import models
 logger = logging.getLogger(__name__)
 
 
+class ListTypes(object):
+    RANDOM = 'random'
+    NEWEST = 'newest'
+    HIGHEST = 'highest'
+    FREQUENT = 'frequent'
+    RECENT = 'recent'
+    ALPHABETICAL_NAME = 'alphabeticalByName'
+    ALPHABETICAL_ARTIST = 'alphabeticalByArtist'
+    STARRED = 'starred'
+    BY_YEAR = 'byYear'
+    BY_GENRE = 'byGenre'
+
+
 class SubsonicClient(object):
     API_VERSION = '1.16.0'
 
@@ -127,7 +140,7 @@ class SubsonicClient(object):
 
     def get_album(self, id_: str) -> models.Album:
         items = self._request_get(self.api.getAlbum(), params={'id': id_})['album']
-        return models.Album(items['song'][0]['parent'], items['name'], items.get('coverArt'), items['songCount'],
+        return models.Album(items['id'], items['name'], items.get('coverArt'), items['songCount'],
                             items['created'],
                             items['duration'],
                             items.get('artist'),
@@ -167,16 +180,51 @@ class SubsonicClient(object):
                              share['visitCount'],
                              [self._make_child(child) for child in share['entry']]) for share in shares]
 
-    def get_all_songs(self) -> typing.List[models.Song]:
-        all_songs = []
+    def get_album_list(self, type_: str, size: int = 10, offset: int = 0, from_year: int = None,
+                       to_year: int = None, genre: int = None, music_folder_id: int = None) -> typing.List[
+        models.Album]:
+        params = {'type': type_, 'size': size, 'offset': offset}
+
+        if type_ == ListTypes.BY_YEAR and (from_year is None or to_year is None):
+            raise ValueError('from_year and to_year required with byYear type')
+        else:
+            params['fromYear'] = from_year
+            params['toYear'] = to_year
+        if type_ == ListTypes.BY_GENRE and genre is None:
+            raise ValueError('genre required with byGenre type')
+        else:
+            params['genre'] = genre
+
+        if music_folder_id:
+            params['musicFolderId'] = music_folder_id
+
+        albums = self._request_get(self.api.getAlbumList(), params=params)['albumList']
+
+        if 'album' not in albums:
+            return []
+
+        albums = albums['album']
+
+        return [models.Album(album['id'], album['title'], album.get('coverArt'), album.get('songCount'),
+                             album['created'],
+                             album.get('duration'),
+                             album.get('artist'),
+                             album.get('artistId'),
+                             []) for album in albums]
+
+    def get_all_songs(self) -> typing.Set[models.Song]:
+        all_songs = set()
         total_songs = 0
-        for artist_index in self.get_artists():
-            print('processing', artist_index)
-            for art in artist_index.artists:
-                artist_album_songs = self.get_album(art.id)
-                all_songs.extend(artist_album_songs.songs)
-                total_songs += artist_album_songs.song_count
-        print(total_songs)
+        offset = 0
+        albums = self.get_album_list(ListTypes.FREQUENT, size=500, offset=offset)
+        while albums:
+            for album in albums:
+                all_songs |= set(self.get_album(album.id).songs)
+            offset = len(all_songs)
+            print(len(all_songs))
+            albums = self.get_album_list(ListTypes.NEWEST, size=500, offset=offset)
+
+        print(len(all_songs))
         return all_songs
 
     def start_scan(self) -> models.ScanStatus:
@@ -187,31 +235,14 @@ class SubsonicClient(object):
         scan_status = self._request_get(self.api.getScanStatus())['scanStatus']
         return models.ScanStatus(scan_status['scanning'], scan_status['count'])
 
-
-if __name__ == '__main__':
-    import os
-
-    logger.setLevel(logging.DEBUG)
-
-    api = SubsonicClient(os.environ['USERNAME'], os.environ['PASSWORD'], os.environ['LOCATION'])
-    folders = api.get_music_folders()
-    print(folders)
-    indexes = api.get_indexes()
-    print(indexes)
-    artists = api.get_artists()
-    print(artists)
-    artist = api.get_artist(artists[7].artists[3].id)
-    print(artist)
-    album_songs = api.get_album(artist.albums[0].id)
-    print(album_songs, artist.albums[0].song_count)
-    music_directory = api.get_music_directory('6')
-    print(music_directory)
-    # songs = api.get_all_songs()
-    # print(songs)
-    # print('len of songs', len(songs))
-    stream_url = api.private_stream_url('84')
-    print(stream_url)
-    # print(api.start_scan())
-    print(api.get_scan_status())
-    share_collection = api.create_share('15')
-    print(share_collection)
+    def search_query(self, query: str, artist_count: int = 20, artist_offset: int = 0, album_count: int = 20,
+                     album_offset: int = 0, song_count: int = 20, song_offset: int = 0,
+                     music_folder_id: str = None) -> typing.List:
+        params = {'query': query, 'artistCount': artist_count, 'artistOffset': artist_offset,
+                  'albumCount': album_count, 'albumOffset': album_offset, 'songCount': song_count,
+                  'songOffset': song_offset}
+        if music_folder_id:
+            params['musicFolderId'] = music_folder_id
+        results = self._request_get(self.api.search2(), params=params)
+        for result in results['searchResult2']:
+            raise NotImplementedError()
