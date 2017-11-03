@@ -92,6 +92,13 @@ class SubsonicClient(object):
         else:
             return models.Directory(items['id'], items['name'], [])
 
+    def _process_index(self, indexes: dict, indices: list) -> None:
+        for index in indexes['index']:
+            artists = []
+            for artist in index['artist']:
+                artists.append(models.MusicFolder(artist['id'], artist['name']))
+            indices.append(models.Index(index['name'], artists))
+
     def get_indexes(self, music_folder_id: int = None, if_modified_since: int = None) -> typing.Optional[
         models.IndexRoot]:
         params = {}
@@ -104,11 +111,9 @@ class SubsonicClient(object):
         children = []
         if 'index' not in indexes:
             return None
-        for index in indexes['index']:
-            artists = []
-            for artist in index['artist']:
-                artists.append(models.MusicFolder(artist['id'], artist['name']))
-            indices.append(models.Index(index['name'], artists))
+
+        self._process_index(indexes, indices)
+
         for child in indexes['child']:
             children.append(self._make_child(child))
         return models.IndexRoot(indexes['lastModified'], indexes['ignoredArticles'], indices, children)
@@ -215,16 +220,39 @@ class SubsonicClient(object):
                              album.get('artistId'),
                              []) for album in albums]
 
-    def get_all_songs(self) -> typing.Set[models.Song]:
+    def _check_children(self, children: list, explored: typing.List[str]) -> typing.List[models.Song]:
         all_songs = []
+        for child in children:
+            if isinstance(child, list):
+                for inner_child in child:
+                    if inner_child.is_dir:
+                        all_songs.extend(self.get_all_songs_for_id(inner_child.id, explored))
+                    else:
+                        all_songs.append(child)
+            else:
+                if child.is_dir:
+                    all_songs.extend(self.get_all_songs_for_id(child.id, explored))
+                all_songs.append(child)
+        return all_songs
+
+    def get_all_songs_for_id(self, id_: str, explored: typing.List[str]) -> typing.List[models.Song]:
+        if id_ in explored:
+            return []
+        music_dir = self.get_music_directory(id_)
+        explored.append(music_dir.id)
+        all_songs = self._check_children(music_dir.children, explored)
+
+        return all_songs
+
+    def get_all_songs(self) -> typing.List[models.Song]:
         root_index = self.get_indexes()
-        all_songs.extend(root_index.children)
+        explored = []
+        all_songs = self._check_children(root_index.children, explored)
+
         for root_index in root_index.indices:
             for artist in root_index.artists:
-                music_dir = self.get_music_directory(artist.id)
-                all_songs.extend(music_dir.children)
-                print(music_dir)
-        print(len(all_songs))
+                all_songs.extend(self.get_all_songs_for_id(artist.id, explored))
+        logger.info("{0} tracks discovered, {1} directories explored".format(len(all_songs), explored))
         return all_songs
 
     def start_scan(self) -> models.ScanStatus:

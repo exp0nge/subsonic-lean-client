@@ -57,11 +57,11 @@ class Child(object):
         return 'Child<id[{0}], title[{1}]>'.format(self.id, self.title)
 
     def __hash__(self):
-        return hash(self.id)
+        return hash(self.id + self.title)
 
     def __eq__(self, other):
         if isinstance(other, Child):
-            return self.id == other.id
+            return self.__hash__() == other.__hash__()
         return False
 
 
