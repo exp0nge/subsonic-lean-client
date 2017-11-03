@@ -16,10 +16,10 @@ class MusicFolder(object):
 class Index(object):
     def __init__(self, name: str, artist: typing.List[MusicFolder]):
         self.name = name
-        self.artist = artist
+        self.artists = artist
 
     def __repr__(self):
-        return 'Index<name[{0}], artist[{1}]>'.format(self.name, self.artist)
+        return 'Index<name[{0}], artist[{1}]>'.format(self.name, self.artists)
 
 
 class Child(object):
@@ -69,11 +69,11 @@ class IndexRoot(object):
     def __init__(self, last_modified: int, ignored_articles: str, index: typing.List[Index], child: typing.List[Child]):
         self.last_modified = last_modified
         self.ignored_articles = ignored_articles
-        self.index = index
-        self.child = child
+        self.indices = index
+        self.children = child
 
     def __repr__(self):
-        return 'IndexRoot<len(Index)={0} len(Child)={1}>'.format(len(self.index), len(self.child))
+        return 'IndexRoot<len(Index)={0} len(Child)={1}>'.format(len(self.indices), len(self.children))
 
 
 class Song(Child):
@@ -122,10 +122,10 @@ class Directory(object):
     def __init__(self, id_: str, name: str, child: typing.List[Child]):
         self.id = id_
         self.name = name
-        self.child = child
+        self.children = child
 
     def __repr__(self):
-        return 'Directory<id[{0}], name[{1}], len(Child)={2}>'.format(self.id, self.name, len(self.child))
+        return 'Directory<id[{0}], name[{1}], len(Child)={2}>'.format(self.id, self.name, len(self.children))
 
 
 class ScanStatus(object):

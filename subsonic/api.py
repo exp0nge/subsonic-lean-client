@@ -63,7 +63,7 @@ class SubsonicClient(object):
                             child['isDir'],
                             child['title'],
                             child.get('album'),
-                            child['artist'],
+                            child.get('artist'),
                             child.get('track'),
                             child.get('genre'),
                             child.get('size'),
@@ -92,7 +92,8 @@ class SubsonicClient(object):
         else:
             return models.Directory(items['id'], items['name'], [])
 
-    def get_indexes(self, music_folder_id: int = None, if_modified_since: int = None) -> models.IndexRoot:
+    def get_indexes(self, music_folder_id: int = None, if_modified_since: int = None) -> typing.Optional[
+        models.IndexRoot]:
         params = {}
         if music_folder_id:
             params['musicFolderId'] = music_folder_id
@@ -101,6 +102,8 @@ class SubsonicClient(object):
         indexes = self._request_get(self.api.getIndexes)['indexes']
         indices = []
         children = []
+        if 'index' not in indexes:
+            return None
         for index in indexes['index']:
             artists = []
             for artist in index['artist']:
@@ -108,7 +111,7 @@ class SubsonicClient(object):
             indices.append(models.Index(index['name'], artists))
         for child in indexes['child']:
             children.append(self._make_child(child))
-        return models.IndexRoot(indexes['lastModified'], indexes['ignoredArticles'], indexes['index'], indexes['child'])
+        return models.IndexRoot(indexes['lastModified'], indexes['ignoredArticles'], indices, children)
 
     def get_artists(self, music_folder_id: str = None) -> typing.List[models.ArtistIndex]:
         params = {'id': music_folder_id} if music_folder_id else {}
@@ -213,17 +216,14 @@ class SubsonicClient(object):
                              []) for album in albums]
 
     def get_all_songs(self) -> typing.Set[models.Song]:
-        all_songs = set()
-        total_songs = 0
-        offset = 0
-        albums = self.get_album_list(ListTypes.FREQUENT, size=500, offset=offset)
-        while albums:
-            for album in albums:
-                all_songs |= set(self.get_album(album.id).songs)
-            offset = len(all_songs)
-            print(len(all_songs))
-            albums = self.get_album_list(ListTypes.NEWEST, size=500, offset=offset)
-
+        all_songs = []
+        root_index = self.get_indexes()
+        all_songs.extend(root_index.children)
+        for root_index in root_index.indices:
+            for artist in root_index.artists:
+                music_dir = self.get_music_directory(artist.id)
+                all_songs.extend(music_dir.children)
+                print(music_dir)
         print(len(all_songs))
         return all_songs
 

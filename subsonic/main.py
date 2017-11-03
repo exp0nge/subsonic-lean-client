@@ -10,7 +10,7 @@ if __name__ == '__main__':
     print(indexes)
     artists = api.get_artists()
     print(artists)
-    artist = api.get_artist(artists[7].artists[3].id)
+    artist = api.get_artist(artists[0].artists[0].id)
     print(artist)
     album_songs = api.get_album(artist.albums[0].id)
     print(album_songs, artist.albums[0].song_count)
