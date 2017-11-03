@@ -9,6 +9,7 @@
 .idea
 
 .env
+env
 
 # Sensitive or high-churn files:
 .idea/**/dataSources/
