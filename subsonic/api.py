@@ -114,8 +114,9 @@ class SubsonicClient(object):
 
         self._process_index(indexes, indices)
 
-        for child in indexes['child']:
-            children.append(self._make_child(child))
+        if 'child' in indexes:
+            for child in indexes['child']:
+                children.append(self._make_child(child))
         return models.IndexRoot(indexes['lastModified'], indexes['ignoredArticles'], indices, children)
 
     def get_artists(self, music_folder_id: str = None) -> typing.List[models.ArtistIndex]:
@@ -158,7 +159,7 @@ class SubsonicClient(object):
                                          child['title'],
                                          child['album'],
                                          child['artist'],
-                                         child['track'],
+                                         child.get('track'),
                                          child.get('genre'),
                                          child['size'],
                                          child['contentType'],
@@ -237,11 +238,12 @@ class SubsonicClient(object):
 
     def get_all_songs_for_id(self, id_: str, explored: typing.List[str]) -> typing.List[models.Song]:
         if id_ in explored:
+            print('dup id', id_)
             return []
+
         music_dir = self.get_music_directory(id_)
         explored.append(music_dir.id)
         all_songs = self._check_children(music_dir.children, explored)
-
         return all_songs
 
     def get_all_songs(self) -> typing.List[models.Song]:
@@ -249,9 +251,12 @@ class SubsonicClient(object):
         explored = []
         all_songs = self._check_children(root_index.children, explored)
 
+        print(len(all_songs))
+
         for root_index in root_index.indices:
             for artist in root_index.artists:
                 all_songs.extend(self.get_all_songs_for_id(artist.id, explored))
+                print(len(all_songs))
         logger.info("{0} tracks discovered, {1} directories explored".format(len(all_songs), explored))
         return all_songs
 

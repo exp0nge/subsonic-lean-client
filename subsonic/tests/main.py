@@ -23,7 +23,7 @@ if __name__ == '__main__':
     songs = api.get_all_songs()
     print(songs)
     print('len of songs', len(songs))
-    stream_url = api.private_stream_url('84')
+    stream_url = api.private_stream_url(songs[3].id)
     print(stream_url)
     # print(api.start_scan())
     print(api.get_scan_status())
