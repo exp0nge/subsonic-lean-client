@@ -77,7 +77,17 @@ class IndexRoot(object):
 
 
 class Song(Child):
-    pass
+    def __init__(self, id_: str, is_dir: bool, title: str, album: str, artist: str, track: int, genre: str, size: int,
+                 content_type: str, suffix: str, duration: int, bit_rate: int, path: str, play_count: int, created: str,
+                 album_id: str, artist_id: str, type_: str, album_artist: str = '', year: int = None,
+                 parent_path: str = '', variable_bit_rate: bool = None, file_format: str = ''):
+        super().__init__(id_, is_dir, title, album, artist, track, genre, size, content_type, suffix, duration,
+                         bit_rate, path, play_count, created, album_id, artist_id, type_)
+        self.album_artist = album_artist
+        self.year = year
+        self.parent_path = parent_path
+        self.variable_bit_rate = variable_bit_rate
+        self.file_format = file_format
 
 
 class Album(object):

@@ -1,4 +1,5 @@
 import os
+from timeit import Timer
 
 from api import SubsonicClient, ListTypes
 
@@ -20,8 +21,17 @@ if __name__ == '__main__':
     # all_albums = api.get_album_list(ListTypes.ALPHABETICAL_ARTIST)
     # print(all_albums)
 
-    songs = list(api.get_all_songs_fast())
-    print('len of songs', len(songs))
+    # songs = list(api.get_all_songs_fast())
+    # print('len of songs', len(songs))
+    t = Timer(lambda: list(api.get_all_songs_fast()))
+    fast_s = t.timeit(number=1)
+    print('fast', fast_s)
+
+    t = Timer(api.get_all_songs)
+    api_s = t.timeit(number=1)
+    print('api only', api_s)
+
+
     # stream_url = api.private_stream_url(songs[3].id)
     # print(stream_url)
     # # print(api.start_scan())

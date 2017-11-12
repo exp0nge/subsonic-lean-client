@@ -300,20 +300,20 @@ class SubsonicClient(object):
             last_id = -1
             songs_processed = 0
             limit_rows = 5000
-            columns = ['id', 'title', 'album', 'artist', 'track_number', 'genre', 'file_size',
-                       'duration_seconds', 'bit_rate', 'path', 'play_count', 'created',
-                       'folder', 'type', 'format', 'album_artist', 'year',
-                       'genre', 'parent_path', 'last_played', 'disc_number', 'variable_bit_rate']
+            db_columns = ['id', 'title', 'album', 'artist', 'track_number', 'genre', 'file_size',
+                          'duration_seconds', 'bit_rate', 'path', 'play_count', 'created', 'format',
+                          'album_artist', 'year', 'parent_path', 'variable_bit_rate']
 
             def _cast_to_int(column):
                 try:
                     return int(column)
                 except ValueError:
                     return None
+
             while songs_processed < max_length:
                 q = session.post('{0}/db.view'.format(self.server_location), data={
                     'query': "select {0} from media_file where type = 'MUSIC' and id > {1} limit {2};".format(
-                        ','.join(columns),
+                        ','.join(db_columns),
                         last_id,
                         limit_rows)})
                 soup = BeautifulSoup(q.text, 'html.parser')
@@ -328,6 +328,9 @@ class SubsonicClient(object):
                                        size=_cast_to_int(columns[6]), duration=_cast_to_int(columns[7]),
                                        content_type='MUSIC', suffix='', bit_rate=_cast_to_int(columns[8]),
                                        path=columns[9], play_count=_cast_to_int(columns[10]), created=columns[11],
+                                       file_format=columns[12], album_artist=columns[13],
+                                       year=_cast_to_int(columns[14]), parent_path=columns[15],
+                                       variable_bit_rate=columns[16].lower() == 'true' if columns[16] else None,
                                        album_id='', artist_id='', type_='FILE')
                     yield song
                     last_id = _cast_to_int(columns[0])
