@@ -4,6 +4,8 @@ import typing
 import logging
 from urllib.parse import urlencode
 
+import requests
+from bs4 import BeautifulSoup
 import tortilla
 
 import models
@@ -236,17 +238,17 @@ class SubsonicClient(object):
                 all_songs.append(child)
         return all_songs
 
-    def get_all_songs_for_id(self, id_: str, explored: typing.List[str]) -> typing.List[models.Song]:
+    def get_all_songs_for_id(self, id_: str, explored: typing.List[str]) -> typing.Set[models.Song]:
         if id_ in explored:
             print('dup id', id_)
-            return []
+            return set()
 
         music_dir = self.get_music_directory(id_)
         explored.append(music_dir.id)
         all_songs = self._check_children(music_dir.children, explored)
-        return all_songs
+        return set(all_songs)
 
-    def get_all_songs(self) -> typing.List[models.Song]:
+    def get_all_songs(self) -> typing.Set[models.Song]:
         root_index = self.get_indexes()
         explored = []
         all_songs = self._check_children(root_index.children, explored)
@@ -258,7 +260,7 @@ class SubsonicClient(object):
                 all_songs.extend(self.get_all_songs_for_id(artist.id, explored))
                 print(len(all_songs))
         logger.info("{0} tracks discovered, {1} directories explored".format(len(all_songs), explored))
-        return all_songs
+        return set(all_songs)
 
     def start_scan(self) -> models.ScanStatus:
         scan_status = self._request_get(self.api.startScan())['scanStatus']
@@ -279,3 +281,55 @@ class SubsonicClient(object):
         results = self._request_get(self.api.search2(), params=params)
         for result in results['searchResult2']:
             raise NotImplementedError()
+
+    def get_all_songs_fast(self) -> typing.Iterator[models.Song]:
+        with requests.Session() as session:
+            login = session.post('{0}/j_acegi_security_check'.format(self.server_location),
+                                 data={'j_username': self.username, 'j_password': self.password})
+            if '?error' in login.url:
+                raise ValueError("Username or password is wrong")
+
+            q = session.post('{0}/db.view'.format(self.server_location),
+                             data={'query': "select count(id) from media_file where type = 'MUSIC';"})
+
+            soup = BeautifulSoup(q.text, 'html.parser')
+            table = soup.find('table', attrs={'class': 'ruleTable'})
+            if not table:
+                return
+            max_length = int(table.find('td', attrs={'class': 'ruleTableCell'}).text)
+            last_id = -1
+            songs_processed = 0
+            limit_rows = 5000
+            columns = ['id', 'title', 'album', 'artist', 'track_number', 'genre', 'file_size',
+                       'duration_seconds', 'bit_rate', 'path', 'play_count', 'created',
+                       'folder', 'type', 'format', 'album_artist', 'year',
+                       'genre', 'parent_path', 'last_played', 'disc_number', 'variable_bit_rate']
+
+            def _cast_to_int(column):
+                try:
+                    return int(column)
+                except ValueError:
+                    return None
+            while songs_processed < max_length:
+                q = session.post('{0}/db.view'.format(self.server_location), data={
+                    'query': "select {0} from media_file where type = 'MUSIC' and id > {1} limit {2};".format(
+                        ','.join(columns),
+                        last_id,
+                        limit_rows)})
+                soup = BeautifulSoup(q.text, 'html.parser')
+
+                table = soup.find('table', attrs={'class': 'ruleTable'})
+                if table is None:
+                    return
+                for tr in table.find_all('tr')[1:]:
+                    columns = [col.text for col in tr.find_all('td')]
+                    song = models.Song(id_=columns[0], is_dir=False, title=columns[1], album=columns[2],
+                                       artist=columns[3], track=_cast_to_int(columns[4]), genre=columns[5],
+                                       size=_cast_to_int(columns[6]), duration=_cast_to_int(columns[7]),
+                                       content_type='MUSIC', suffix='', bit_rate=_cast_to_int(columns[8]),
+                                       path=columns[9], play_count=_cast_to_int(columns[10]), created=columns[11],
+                                       album_id='', artist_id='', type_='FILE')
+                    yield song
+                    last_id = _cast_to_int(columns[0])
+                    songs_processed += 1
+                print(last_id)
