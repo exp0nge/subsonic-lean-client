@@ -331,7 +331,8 @@ class SubsonicClient(object):
                                        file_format=columns[12], album_artist=columns[13],
                                        year=_cast_to_int(columns[14]), parent_path=columns[15],
                                        variable_bit_rate=columns[16].lower() == 'true' if columns[16] else None,
-                                       album_id='', artist_id='', type_='FILE')
+                                       stream_url=self.private_stream_url(columns[0]), album_id='', artist_id='',
+                                       type_='FILE')
                     yield song
                     last_id = _cast_to_int(columns[0])
                     songs_processed += 1
