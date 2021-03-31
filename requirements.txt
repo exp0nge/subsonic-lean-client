@@ -6,7 +6,7 @@ colorclass==2.2.0
 formats==0.1.1
 idna==2.6
 lxml==4.6.3
-requests==2.18.4
+requests==2.20.0
 six==1.11.0
 tortilla==0.4.2
 urllib3==1.24.2
