@@ -5,7 +5,7 @@ chardet==3.0.4
 colorclass==2.2.0
 formats==0.1.1
 idna==2.6
-lxml==4.6.3
+lxml==4.6.5
 requests==2.20.0
 six==1.11.0
 tortilla==0.4.2
